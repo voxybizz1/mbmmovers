@@ -1,0 +1,502 @@
+{% extends 'base.html' %}
+
+{% block title%}Ticketing{%endblock title%}
+{% block username %}{{ request.user.username }}{% endblock username %}
+{% block terminal %}{{ request.session.uterminal }}{% endblock terminal %}
+{%block body%}
+{% load myfilters %}
+<div class="container">
+    <div class="row">
+        <div class="col-sm-6"><h2>TICKETING</h2></div>
+        <div class="col-sm-6 text-end"><a href="{% url 'close' schedule_id=schedule.id %}"><button class="btn btn-danger btn-md my-1">Close Booking</button></a></div>
+    </div>
+    <hr style="margin:5px 0;">
+    <div class="row my-1">
+        <div class="col-6">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <strong>{{ message }}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            <table class="route-detail">
+                <tr>
+                    <th>Route:</th>
+                    <td>{{schedule.route_assg_bus.route}}</td>
+                </tr>
+                <tr>
+                    <th>Departure:</th>
+                    <td>{% if deptime %}{{schedule.departure.date}} - {{deptime}}{% else %}{{schedule.departure}}{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>Arrival:</th>
+                    <td>{{schedule.arrival}}</td>
+                </tr>
+                <tr>
+                    <th>Service:</th>
+                    <td>{{schedule.route_assg_bus.bus.service_type}}</td>
+                </tr>
+                <tr>
+                    <th>Bus Model:</th>
+                    <td>{{schedule.route_assg_bus.bus}}</td>
+                </tr>
+                <tr>
+                    <th>Total Seats:</th>
+                    <td>{{schedule.route_assg_bus.bus.seating_capacity}}</td>
+                </tr>
+            </table>
+            <hr style="margin:5px 0;">
+            <span class="hidden-element" id="fare">{{fares|get_fare}}</span>
+            <span class="hidden-element" id="scid">{{ schedule.id }}</span>
+            <span id="seats"></span>
+            <span id="genders"></span>
+            <form method="post" name="ticketing" onsubmit="return validateForm(this.id)" id="ticketing-form" action="{% url 'ticketing' schedule_id=schedule.id %}">
+                {% csrf_token %}
+                <div class="mb-1 row">
+                    <label for="inputRoute" class="col-sm-3 col-form-label">Destination</label>
+                    <div class="col-sm-9">
+                      <select name="inputRoute" onchange="setFair(this.value);" class="form-control" id="inputRoute" required>
+                        {% if fares %}
+                           {% for fare in fares %}
+                             <option value="{{fare.id}}">{{fare.destination.city}}</option>
+                           {% endfor %}
+                        {% endif %}
+                      </select>
+                    </div>
+                  </div>
+                <div class="mb-1 row">
+                    <label for="inputPasName" class="col-sm-3 col-form-label">Passenger Name: </label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="inputPasName" name="inputPasName" required>
+                    </div>
+                </div>
+                <div class="mb-1 row">
+                    <label for="inputContact" class="col-sm-3 col-form-label">Contact #:</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="inputContact" name="inputContact" required>
+                    </div>
+                </div>
+                <div class="mb-1 row">
+                    <label for="inputCnic" class="col-sm-3 col-form-label">Cnic:</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="inputCnic" name="inputCnic" required>
+                    </div>
+                </div>
+                <!-- Gender input -->
+                <input type="text" class="form-control hidden-element" id="inputGenders" value="" name="inputGenders">
+                <!-- Gender input -->
+
+                <!-- Voucher input -->
+                <input type="text" class="form-control hidden-element" id="inputVoucher" value="" name="inputVoucher">
+                <!-- Voucher input -->
+
+                <div class="mb-1 row">
+                    <label for="inputSeats" class="col-sm-3 col-form-label">Seats:</label>
+                    <div class="col-sm-9">
+                        <input readonly type="text" class="form-control" id="inputSeats" name="inputSeats" required>
+                    </div>
+                </div>
+                <div class="mb-1 row">
+                    <label for="inputDiscount" class="col-sm-3 col-form-label">Discount:</label>
+                    <div class="col-sm-9">
+                        <input type="number" class="form-control" id="inputDiscount" name="inputDiscount" min=0 value="0" required>
+                    </div>
+                </div>
+                <div class="mb-1 row">
+                    <label for="inputFare" class="col-sm-3 col-form-label">Fare:</label>
+                    <div class="col-sm-3">
+                        <input readonly type="text" class="form-control" id="inputFare" value="{{fare}}">
+                    </div>
+                    <div class="col-sm-2 px-0">
+                        <input readonly type="text" class="form-control" id="inputNum">
+                    </div>
+                    <div class="col-sm-4">
+                        <input readonly type="text" class="form-control" id="inputTotal">
+                    </div>
+                </div>
+                <div class="mb-1 row">
+                    <label for="inputSeats" class="col-sm-3 col-form-label">Gender:</label>
+                    <div class="col-sm-3 my-auto">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="inputBookedbyGender" id="inlineRadio1" value="1" required>
+                            <label class="form-check-label" for="inlineRadio1">Male</label>
+                        </div>
+                </div>
+                <div class="col-sm-1 my-auto">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="inputBookedbyGender" id="inlineRadio2" value="0">
+                            <label class="form-check-label" for="inlineRadio2">Female</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-dark btn-md">Purchase Tickets!</button>
+                <button type="button" onclick="printBill()" class="btn btn-dark btn-md">Print Ticket!</button>
+                <a href="{% url 'cancelTickets' sc_id=schedule.id %}"><button type="button" name="cancelTickets" class="btn btn-dark btn-md">Cancel Tickets</button></a>
+                </form>
+                
+                
+ 
+                
+                
+                
+                   <div class="ticket hidden-element" id="ticket">
+  
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <th style="text-align:center;width:100%; font-size:20px; border-collapse:collapse;">Mahar Basheer Movers</th>
+                    </tr>
+					<tr>
+                        <th style="text-align:center;width:100%; font-size:22px; border-collapse:collapse;">مہر بشیر موورز</th>
+                    </tr>
+                    <tr>
+                    <th style="text-align:center;width:100%; font-size:15px; border-collapse:collapse;">Helpline Layyah # 03008749275</th>
+                </tr>
+                <tr>
+                    <th style="text-align:center;width:100%; font-size:15px; border-collapse:collapse;">Helpline Chowk Azam # 03070709175</th>
+                </tr>
+                </table>
+                
+                
+                <table style="width:100%; margin-top:0px; border-collapse:collapse;">
+                    <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:14px">Ticket Id</th>
+                        <th style="border:1px solid #000;text-align:left;width:65%;font-size:14px" id="bill-voucher"></th>
+                    </tr>
+                    
+        
+                    <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:11px">Passenger Name</th>
+                        <td id="bill-pname" style="border:1px solid #000;text-align:left;width:65%;font-size:12px"></td>
+                    </tr>
+
+                <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:12px">Route</th>
+						<td id="bill-route" style="border:1px solid #000;text-align:left;width:65%;font-size:12px"></td>
+                    </tr>
+                
+                <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:12px">Departure</th>
+						<td id="bill-departure" style="border:1px solid #000;text-align:left;width:65%;font-size:12px">{% if deptime %}{{schedule.departure.date}} - {{deptime}}{% else %}{{schedule.departure}}{% endif %}</td>
+                    </tr>
+                <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:12px">Bus</th>
+						<td id="bill-bus" style="border:1px solid #000;text-align:left;width:65%;font-size:12px">{{schedule.route_assg_bus.bus}}</td>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:12px">Issuedby</th>
+                        <td style="border:1px solid #000;text-align:left;width:65%;font-size:12px">{{ request.user.get_full_name}}</td>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:11px">Terminal Name</th>
+                        <td style="border:1px solid #000;text-align:left;width:65%;font-size:12px">{{ request.session.uterminal }}</td>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:left;width:35%;font-size:12px">Booking Time</th>
+                        <td style="border:1px solid #000;text-align:left;width:65%;font-size:12px"><span   id='ct7'></span></th></td>
+                    </tr>
+        </table>          
+                
+   
+                <table style="width:100%; margin-top:0px; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th style="border:1px solid #000;text-align:center;font-size:12px" class="seat">Seat</th>
+                            <th style="border:1px solid #000;text-align:center;font-size:12px" class="gender">GR.</th>
+                            <th style="border:1px solid #000;text-align:center;font-size:12px" class="qty">QTY</th>
+                            <th style="border:1px solid #000;text-align:center;font-size:12px" class="price">PKR</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bill-body">
+                        <tr>
+                            <td style="border:1px solid #000;text-align:center;font-size:12px" id="seatnumber"></td>
+                            <td style="border:1px solid #000;text-align:center;font-size:12px" id="seatgender"></td>
+                            <td style="border:1px solid #000;text-align:center;font-size:12px" id="seatqty"></td>
+                            <td style="border:1px solid #000;text-align:center;font-size:12px" id="seatprice">{{ fare }}</td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <th style="border:1px solid #000;text-align:center;font-size:12px">Total</th>
+                            <th style="border:1px solid #000;text-align:center;font-size:12px" id="totalprice">00</th>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                
+                <table style="width:100%; margin-top:0px; border-collapse:collapse;">
+
+                    <tr style="margin-top:10px;">
+                        <th style="border:1px solid #000;text-align:center;font-size:12px">Amount per seat</th>
+                        <th style="border:1px solid #000;text-align:center;font-size:12px">Total Discount</th>
+                    </tr>
+                    <tr>
+                        <td id="bill-disc" style="border:1px solid #000;text-align:center;font-size:12px"></td>
+                        <td id="bill-discTotal" style="border:1px solid #000;text-align:center;font-size:12px">{% if deptime %}{{schedule.departure.date}} - {{deptime}}{% else %}{{schedule.departure}}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;font-size:14px">Total Payable Amount</th>
+                        <th id="bill-TotalPayable" style="border:1px solid #000;text-align:center;font-size:14px"></th>
+                    </tr>
+                </table>
+                
+                <table style="width:100%; margin-top:1px; border-collapse:collapse;">
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;">کسی بھی شکایت کی صورت پر رابطہ کریں 6768566 0300</th>
+                    </tr>
+                    </table>
+            </div>   
+            
+                
+            
+                
+      <!--     
+                
+            <div class="ticket hidden-element" id="ticket">
+                <div class="text-center">
+                <h2 style="text-align:center;">Mahar Basheer Movers</h2>
+                <h2 style="text-align:center;">مہر بشیر موورز</h2>
+                </div>
+                <table style="width:100%; margin-top:5px;">
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;">Ticket Id</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;" id="bill-voucher"></th>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;">Issuedby</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;">{{ request.user.get_full_name}}</th>
+                    </tr>
+                </table>
+                <table style="width:100%; margin-top:5px;">
+                    <tr>
+                        <th style="text-align:left;" colspan="2">Passenger Info</th>
+                    </tr>
+                    <tr style="margin-top:10px;">
+                        <td style="border:1px solid #000;text-align:center;">Name</td>
+                        <td id="bill-pname" style="border:1px solid #000;text-align:center;"></td>
+                    </tr>
+                </table>
+                <table style="width:100%; margin-top:5px;">
+                    <tr>
+                        <th style="text-align:left;" colspan="2">Departure Info</th>
+                    </tr>
+                    <tr style="margin-top:10px;">
+                        <th style="border:1px solid #000;text-align:center;">Route</th>
+                        <th style="border:1px solid #000;text-align:center;">Departure</th>
+                        <th style="border:1px solid #000;text-align:center;">Bus</th>
+                    </tr>
+                    <tr>
+                        <td id="bill-route" style="border:1px solid #000;text-align:center;"></td>
+                        <td id="bill-departure" style="border:1px solid #000;text-align:center;">{{schedule.departure.date}} - {% if deptime %}{{deptime}}{% else %}{{schedule.departure.time}}{% endif %}</td>
+                        <td id="bill-bus" style="border:1px solid #000;text-align:center;">{{schedule.route_assg_bus.bus}}</td>
+                    </tr>
+                </table>
+                <table style="width:100%; margin-top:10px;">
+                    <thead>
+                        <tr>
+                            <th style="border:1px solid #000;text-align:center;" class="seat">Seat</th>
+                            <th style="border:1px solid #000;text-align:center;" class="gender">GR.</th>
+                            <th style="border:1px solid #000;text-align:center;" class="qty">QTY</th>
+                            <th style="border:1px solid #000;text-align:center;" class="price">PKR</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bill-body">
+                        <tr>
+                            <td style="border:1px solid #000;text-align:center;" id="seatnumber"></td>
+                            <td style="border:1px solid #000;text-align:center;" id="seatgender"></td>
+                            <td style="border:1px solid #000;text-align:center;" id="seatqty"></td>
+                            <td style="border:1px solid #000;text-align:center;" id="seatprice">{{ fare }}</td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td><b>TOTAL</b></td>
+                            <td style="border:1px solid #000;text-align:center;" id="totalprice">00</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table style="width:100%; margin-top:5px;">
+                    <tr>
+                        <th style="text-align:left;" colspan="2">Discount Info</th>
+                    </tr>
+                    <tr style="margin-top:10px;">
+                        <th style="border:1px solid #000;text-align:center;">Amount per seat</th>
+                        <th style="border:1px solid #000;text-align:center;">Total Discount</th>
+                    </tr>
+                    <tr>
+                        <td id="bill-disc" style="border:1px solid #000;text-align:center;"></td>
+                        <td id="bill-discTotal" style="border:1px solid #000;text-align:center;">{{schedule.departure.date}} - {{schedule.departure.time}}</td>
+                    </tr>
+                    <tr>
+                        <td style="border:1px solid #000;text-align:center;">Total Payable Amount</td>
+                        <td id="bill-TotalPayable" style="border:1px solid #000;text-align:center;"></td>
+                    </tr>
+                </table>
+            </div>
+                                
+ 
+            
+            <div class="coupon hidden-element" id="coupon">
+                <div class="text-center">
+                    <h2 style="text-align:center;">Mahar Basheer Movers</h2>
+                    <h2 style="text-align:center;">Boarding Coupon</h2>
+                </div>
+                <table style="width:100%; margin-top:5px;">
+                    <tr style="margin-top:5px;">
+                        <th style="border:1px solid #000;text-align:center;width:50%;">Ticket Id</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;" id="bill-voucher-coupon"></th>
+                    </tr>
+                    <tr style="margin-top:5px;">
+                        <th style="border:1px solid #000;text-align:center;width:50%;">Route</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;" id="bill-route-coupon"></th>
+                    </tr>
+                    <tr style="margin-top:5px;">
+                        <th style="border:1px solid #000;text-align:center;width:50%;">Seats</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;" id="seatnumber-coupon"></th>
+                    </tr>
+                    <tr style="margin-top:5px;">
+                        <th style="border:1px solid #000;text-align:center;width:50%;">Name</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;" id="bill-pname-coupon"></th>
+                    </tr>
+                    <tr style="margin-top:5px;">
+                        <th style="border:1px solid #000;text-align:center;width:50%;">Fare</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;" id="totalprice-coupon"></th>
+                    </tr>
+                </table>
+            </div>
+ 
+ --> 
+ 
+
+<div class="coupon hidden-element" id="coupon">
+    <p style="page-break-before: always;"></p>
+				<table style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <th style="text-align:center;width:100%; font-size:23px">Mahar Basheer Movers</th>
+                    </tr>
+                </table>
+                
+                
+                
+                <table style="width:100%; border-collapse:collapse;">
+                
+               		 <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px">Boarding Coupon</th>
+                        <td style="border:1px solid #000;text-align:center;width:50%;font-size:12px">{{ request.session.uterminal }}</td>
+                    </tr>
+                
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px">Ticket Id</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px" id="bill-voucher-coupon"></th>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px">Name</th>
+                        <td style="border:1px solid #000;text-align:center;width:50%;font-size:12px" id="bill-pname-coupon"></td>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px">Psngr Number</th>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px" id="bill-pcontact"></th>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px">Route</th>
+                        <td style="border:1px solid #000;text-align:center;width:50%;font-size:12px" id="bill-route-coupon"></td>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px">Bus</th>
+                        <td id="bill-bus" style="border:1px solid #000;text-align:center;font-size:12px">{{schedule.route_assg_bus.bus}}</td>
+                    </tr>
+                    <tr>
+                        <th style="border:1px solid #000;text-align:center;width:50%;font-size:12px">Departure Time:</th>
+                        <td id="bill-departure" style="border:1px solid #000;text-align:center;font-size:12px">{% if deptime %}{{schedule.departure.date}} - {{deptime}}{% else %}{{schedule.departure}}{% endif %}</td>
+                    </tr>
+
+
+                </table>
+                
+                
+                <table style="width:100%; margin-top:1px; border-collapse:collapse;">
+                
+               		
+                    <tr style="margin-top:5px;">
+                    	<th style="border:1px solid #000;text-align:center;">Seats</th>
+                    	<th style="border:1px solid #000;text-align:center;">Disount</th>
+                        <th style="border:1px solid #000;text-align:center;">Paid PKR</th>
+                        <th style="border:1px solid #000;text-align:center;">Issue By</th>
+                        
+                    </tr>
+                    <tr style="margin-top:5px;">
+                        <td style="border:1px solid #000;text-align:center;font-size:12px" id="seatnumber-coupon"></td>
+                        <td id="bill-discTotal2" style="border:1px solid #000;text-align:center;font-size:12px"></td>
+                        <th style="border:1px solid #000;text-align:center;font-size:12px" id="totalprice-coupon"></th>
+                        <td style="border:1px solid #000;text-align:center;font-size:12px">{{ request.user.get_full_name}}</td>
+                    </tr>
+              
+                </table>
+                
+            </div>
+
+
+
+            
+            
+        </div>
+        <div class="col-6 seating-structure">
+            <div class="row">
+                <div class="col-6 reservation_head">
+                    <h4>Seats Reserved</h4>
+                </div>
+                <div class="col-6 reservation_count">
+                    <h4>{{ seating|length }}<h4>
+                </div>
+            </div>
+            {% block seating_view %}
+            {% include "seats.html" with seat_info="seating" capacity=schedule.route_assg_bus.bus.seating_capacity %}
+            {% endblock %}
+        </div>
+    </div>
+</div>
+
+
+
+
+
+{% block script %}
+<script>function display_ct7() {
+var x = new Date()
+var ampm = x.getHours( ) >= 12 ? ' PM' : ' AM';
+hours = x.getHours( ) % 12;
+hours = hours ? hours : 12;
+hours=hours.toString().length==1? 0+hours.toString() : hours;
+
+var minutes=x.getMinutes().toString()
+minutes=minutes.length==1 ? 0+minutes : minutes;
+
+var seconds=x.getSeconds().toString()
+seconds=seconds.length==1 ? 0+seconds : seconds;
+
+var month=(x.getMonth() +1).toString();
+month=month.length==1 ? 0+month : month;
+
+var dt=x.getDate().toString();
+dt=dt.length==1 ? 0+dt : dt;
+
+var x1=dt + "/" + month + "/" + x.getFullYear(); 
+x1 = x1 + " - " +  hours + ":" +  minutes + ":" +  seconds + " " + ampm;
+document.getElementById('ct7').innerHTML = x1;
+display_c7();
+ }
+ function display_c7(){
+var refresh=1000; // Refresh rate in milli seconds
+mytime=setTimeout('display_ct7()',refresh)
+}
+display_c7()
+</script>
+
+
+
+
+{% endblock script %}
+
+
+{%endblock body%}

@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title%}Close booking{%endblock title%}
+{% block username %}{{ request.user.username }}{% endblock username %}
+{% block terminal %}{{ request.session.uterminal }}{% endblock terminal %}
+{%block body%}
+{% load myfilters %}
+<div class="container">
+    <div class="row">
+        <div class="col-sm-6"><h1>CLOSE BOOKING</h1></div>
+        <div class="col-sm-6 text-end"><a href="{% url 'ticketing' schedule_id=schedule.id %}"><button class="btn btn-dark btn-md my-2">Go to ticketing</button></a></div>
+    </div>
+    <hr>
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <strong>{{ message }}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    <div class="row">
+        <p class="hidden-element" id="inputTid">{{tid}}</p>
+        <p class="hidden-element" id="inputUid">{{request.user.id}}</p>
+        <form method="post" name="closing" class="mx-auto" id="close-booking" action="">
+            {% csrf_token %}
+            <div class="my-2 mx-auto row">
+                <label for="inputRefreshment" class="col-md-1 col-form-label">Refreshment: </label>
+                <div class="col-sm-4">
+                    <input type="number" class="form-control" id="inputRefreshment" name="inputRefreshment" min="0" placeholder="Refreshment charges (Minimum - 0Rs)" value="0" required>
+                </div>
+            </div>
+            <input type="number" class="hidden-element" id="inputSchedule" name="inputSchedule" value="{{ schedule.id }}">
+            <input type="text" class="hidden-element" id="inputVoucher" name="inputVoucher" value="">
+
+            <div class="my-2 mx-auto row">
+                <label for="inputWashing" class="col-md-1 col-form-label">Washing: </label>
+                <div class="col-sm-4">
+                    <input type="number" class="form-control" id="inputWashing" name="inputWashing" min="0" placeholder="Washing charges (Minimum - 0Rs)" value="0" required>
+                </div>
+            </div>
+            <div class="my-2 mx-auto row">
+                <label for="inputParking" class="col-md-1 col-form-label">Parking: </label>
+                <div class="col-sm-4">
+                    <input type="number" class="form-control" id="inputParking" name="inputParking" min="0" placeholder="Parking charges (Minimum - 0Rs)" value="0" required>
+                </div>
+            </div>
+            <div class="my-2 mx-auto row">
+                <label for="inputToll" class="col-md-1 col-form-label">Terminal Charges: </label>
+                <div class="col-sm-4">
+                    <input type="number" class="form-control" id="inputToll" name="inputToll" min="0" placeholder="Toll charges (Minimum - 0Rs)" value="0" required>
+                </div>
+            </div>
+            <div class="col-sm-4 my-3 text-start">
+            <button type="submit" name="close-sc" class="btn btn-dark btn-md">Close</button>
+            <button type="button" onclick="printVoucher()" class="btn btn-dark btn-md">Print Voucher</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        <form method="post" name="remove" class="mx-auto" id="remove-schedule" action="">
+            {% csrf_token %}
+            <div class="col-sm-4 my-3 text-start">
+                {% load static %}
+            <button type="submit" name="quit-schedule" class="btn btn-danger btn-md"><img style="width:16px; height: 16px;margin-top:-2px;" src="{% static 'images/remove_white.png' %}"> Remove Schedule</button>
+            </div>
+        </form>
+    </div>
+    {% if schedule %}
+    <div class="voucher" id="voucher">
+        <div class="text-center">
+        <h1 style="text-align:center; font-size: 25px">Mahar Basheer Movers</h1>
+        {% comment %} <p style="text-align:center;"><strong>Voucher:</strong> <span id="bill-voucher">{{ billdata.voucher}}</span></p> {% endcomment %}
+        </div>
+        <table style="width:100%; margin-top:5px;">
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:30%;">Voucher</th>
+                <th style="border:1px solid #000;text-align:center;" id="bill-voucher"></th>
+            </tr>
+        </table>
+        
+        
+        <table style="width:100%; margin-top:5px;">
+
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:30%;">Route</th>
+                <td style="border:1px solid #000;text-align:center;">{{schedule.route_assg_bus.route}}</td>
+
+            </tr>
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:30%;">Departure</th>
+                <td style="border:1px solid #000;text-align:center;">{% if deptime %}{{schedule.departure.date}} - {{deptime}}{% else %}{{schedule.departure}}{% endif %}</td>
+
+            </tr>
+
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:30%;">Bus</th>
+                <td style="border:1px solid #000;text-align:center;">{{schedule.route_assg_bus.bus}}</td>
+            </tr>
+        </table>
+        
+
+        <table style="width:100%; margin-top:5px;">
+
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:30%;">Seats</th>
+                <th style="border:1px solid #000;text-align:center;">{{ seats }}</th>
+            </tr>
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:30%;">Destinations</th>
+                <th style="border:1px solid #000;text-align:center;">
+                    {% if destinations %}
+                    {% for i in destinations %}
+                    {{i}}:{{destinations|get_item:i}}
+                    {% endfor %}
+                    {% endif %}
+                </th>
+            </tr>
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:30%;">Issuedby</th>
+                <th style="border:1px solid #000;text-align:center;">{{ request.user.get_full_name }}</th>
+            </tr>
+        </table>
+        
+        <table style="width:100%; margin-top:5px;">
+
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:100%;">Fair Summary</th>
+            </tr>
+        </table>
+        
+        <table style="width:100%; margin-top:0px;">
+                <tr>
+                    <th style="border:1px solid #000;text-align:center;">Total Seats</th>
+                    <th style="border:1px solid #000;text-align:center;">Occupied seats</th>
+                    <th style="border:1px solid #000;text-align:center;">Total fare</th>
+                </tr>
+                <tr>
+                    <th style="border:1px solid #000;text-align:center;">{{ route_bus.bus.seating_capacity }}</th>
+                    <th style="border:1px solid #000;text-align:center;">{{ tickets }}</th>
+                    
+                    <th id="Fare" style="border:1px solid #000;text-align:center;">{{ fare }}</th>
+                </tr>
+        </table>
+        
+        <table style="width:100%; margin-top:5px;">
+
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:100%;">Deduction Summary</th>
+            </tr>
+            
+        </table>
+        
+        
+        <table style="width:100%; margin-top:0px;">
+
+            <tr>
+                <th style="border:1px solid #000;text-align:center;">Refreshment</th>
+                <th style="border:1px solid #000;text-align:center;">Washing</th>
+                <th style="border:1px solid #000;text-align:center;">Parking</th>
+            </tr>
+            <tr>
+                <th id="dspRefreshment" style="border:1px solid #000;text-align:center;">0</th>
+                <th id="dspWashing" style="border:1px solid #000;text-align:center;">0</th>
+                <th id="dspParking" style="border:1px solid #000;text-align:center;">0</th>
+            </tr>
+        </table>
+        
+        <table style="width:100%; margin-top:5px;">
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:50%;">Terminal Charges</th>
+                <th id="dspToll" style="border:1px solid #000;text-align:center;width:50%;">0</th>
+                
+            </tr>
+            <tr>
+                <th style="border:1px solid #000;text-align:center;width:50%;">Discount</th>
+                <th id="dspDisc" style="border:1px solid #000;text-align:center;width:50%;">{{discount}}</th>
+            </tr>
+        </table>
+        
+        
+        <table style="width:100%; margin-top:5px;">    
+            <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th style="border:1px solid #000;text-align:center;">Total Deduction</th>
+                <th style="border:1px solid #000;text-align:center;" id="dspDeduction">0</th>
+            </tr>
+            <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th style="border:1px solid #000;text-align:center;">Total Paid</th>
+                <th id="totalFare" style="border:1px solid #000;text-align:center;">{{ fare }}</th>
+            </tr>
+    </table>
+    </div>
+    {% endif %}
+    {% block script %}
+    <script type="text/JavaScript">
+        function printVoucher()
+        {
+            var scid = document.getElementById('inputSchedule').value;
+            var uid = document.getElementById('inputUid').innerHTML;
+            var tid = document.getElementById('inputTid').innerHTML;
+            var voucher = scid + '' + tid + '' + uid;
+            document.getElementById('bill-voucher').innerHTML = voucher;
+            document.getElementById('inputVoucher').value = voucher;
+            var deduction = parseInt(document.getElementById('inputRefreshment').value) || 0;
+            deduction += parseInt(document.getElementById('inputWashing').value) || 0;
+            deduction += parseInt(document.getElementById('inputParking').value) || 0;
+            deduction += parseInt(document.getElementById('inputToll').value) || 0;
+            deduction += parseInt(document.getElementById('dspDisc').innerHTML);
+            document.getElementById('dspRefreshment').innerHTML = document.getElementById('inputRefreshment').value;
+            document.getElementById('dspWashing').innerHTML = document.getElementById('inputWashing').value;
+            document.getElementById('dspParking').innerHTML = document.getElementById('inputParking').value;
+            document.getElementById('dspToll').innerHTML = document.getElementById('inputToll').value;
+            document.getElementById('dspDeduction').innerHTML = deduction;
+            
+            document.getElementById('totalFare').innerHTML = parseInt(document.getElementById('Fare').innerHTML) - deduction;
+
+            var  WinPrint = window.open('', '', 'left=0,top=0,width=800,height=900,toolbar=0,scrollbars=0,status=0');
+            var prtContent = document.getElementById("voucher");
+            WinPrint.document.close();
+            WinPrint.document.write(prtContent.innerHTML);
+            WinPrint.print();
+            WinPrint.focus();
+            WinPrint.close();
+        }
+    </script>
+    {% endblock script %}
+</div>
+{%endblock body%}

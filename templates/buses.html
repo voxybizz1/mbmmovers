@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Buses{% endblock title %}
+{% block username %}{{ request.user.username }}{% endblock username %}
+{% block terminal %}{{ request.session.uterminal }}{% endblock terminal %}
+{%block body%}
+{% load static %}
+<div class="container my-2">
+  <h1>Buses</h1>
+  <hr>
+  <div class="container">
+    {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <strong>{{ message }}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+  {% endif %}
+</div>
+</div>
+<div class="container">
+    <table class="schedule Users">
+        <tr>
+          <th>Model</th>
+          <th>Number</th>
+          <th>Seating Capacity</th>
+          <th>Service</th>
+          <th>Edit</th>
+          <th>Remove</th>
+        </tr>
+        {% for bus in Buses %}
+        <tr class="tr">
+          <td>{{bus.bus_model}}</td>
+          <td>{{bus.bus_number}}</td>
+          <td>{{bus.seating_capacity}}</td>
+          <td>{{bus.service_type}}</td>
+          <td><a href="{% url 'modifybus' bus_id=bus.id %}"><img src="{% static 'images/edit.png' %}"></a></td>
+          <td><a href="{% url 'viewbuses' bus_id=bus.id %}"><img src="{% static 'images/remove.png' %}"></a></td>
+        </tr>
+        {% endfor %}
+      </table>
+</div>
+{%endblock body%}

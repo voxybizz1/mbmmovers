@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Schedule{% endblock title %}
+{% block username %}{{ request.user.username }}{% endblock username %}
+{% block terminal %}{{ request.session.uterminal }}{% endblock terminal %}
+{%block body%}
+{% load static %}
+{% load myfilters %}
+<div class="container my-2">
+  <h1>SCHEDULE</h1>
+  <hr>
+  <div class="container">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      <strong>{{ message }}</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    <form method="post" name="schedule-form" class="mx-auto" id="schedule-form" action="/schedule">
+      {% csrf_token %}
+      <div class="mb-3 row">
+        <label for="inputRoute" class="col-sm-1 col-form-label">Destination</label>
+        <div class="col-sm-3">
+          <select name="inputRoute" class="form-control" id="inputRoute">
+            <option value="" selected>Select Destination</option>
+            {% if routes %}
+            {% for route in routes %}
+            <option value="{{route.id}}">{{route.destination.city}} Via {{route.via}}</option>
+            {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+        <label for="inputDate" class="col-sm-1 col-form-label">Date: </label>
+        <div class="col-sm-2">
+          <input type="date" class="form-control" id="inputDate" name="inputDate" value="">
+        </div>
+        <label for="inputTime" class="col-sm-1 col-form-label">After: </label>
+        <div class="col-sm-2">
+          <input type="time" class="form-control" id="inputTime" name="inputTime">
+        </div>
+        <div class="col-sm-2">
+          <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="container">
+  <table class="schedule">
+    <tr>
+      <th>ROUTE</th>
+      <th>DEPT. TIME</th>
+      <th>ARRIVAL TIME</th>
+      <th>SERVICE TYPE</th>
+      <th>BUS NO</th>
+      <th>TOTAL SEATS</th>
+      <th>TICKET</th>
+      <th>BOOKING</th>
+      <th>Time+</th>
+      <th>Close Vouchers</th>
+    </tr>
+    {% for sc in schedule %}
+    {% if sc.route_assg_bus.bus %}
+    <tr class="tr">
+      <td>{{sc.route_assg_bus.route}}</td>
+      <td>{{sc.departure}}</td>
+      <td>{{sc.arrival}}</td>
+      <td>{{sc.route_assg_bus.bus.service_type}}</td>
+      <td>{{sc.route_assg_bus.bus}}</td>
+      <td>{{sc.route_assg_bus.bus.seating_capacity}}</td>
+      <td><a href="{% url 'ticketing' schedule_id=sc.id %}" tooltip="ticket"><img src="{% static 'images/purchase.png' %}"></a></td>
+      <td><a href="{% url 'booking' schedule_id=sc.id %}" tooltip="book"><img src="{% static 'images/book.png' %}"></a></td>
+      <td><a href="{% url 'addtime' schedule_id=sc.id %}" tooltip="Add Time"><img src="{% static 'images/time.png' %}"></a></td>
+      <td><a href="{% url 'close' schedule_id=sc.id %}"><img src="{% static 'images/lock.png' %}"></a></td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </table>
+</div>
+{% block script %}
+<script type="text/JavaScript">
+  var date = new Date();
+  var currentDate = date.toISOString().slice(0,10);
+
+  var currentHours = date.getHours();
+  currentHours = ("0" + currentHours).slice(-2);
+
+  var currentMins = date.getMinutes();
+  currentMins = ("0" + currentMins).slice(-2);
+
+  var currentTime = currentHours + ':' + currentMins;
+  datearr = currentDate.split('-');
+  document.getElementById('inputDate').value = currentDate;
+  document.getElementById('inputTime').value = currentTime;
+</script>
+{% endblock script %}
+{%endblock body%}
